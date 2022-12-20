@@ -7,7 +7,7 @@ sparql = SPARQLWrapper(
 
 sparql.setReturnFormat(JSON)
 
-def search(query: str):
+def search(query: str, page: int):
     sparql.setQuery("""
         prefix xsd: <http://www.w3.org/2001/XMLSchema#>
         prefix skos: <http://www.w3.org/2004/02/skos/core#>
@@ -18,11 +18,12 @@ def search(query: str):
         prefix exv:   <http://example.org/vocab#>
         prefix bds: <http://www.bigdata.com/rdf/search#>
 
-        SELECT ?id ?title (GROUP_CONCAT(?genre_name;SEPARATOR=", ") AS ?genres) ?image WHERE {{
+        SELECT ?id ?title (SAMPLE(?sc) AS ?score) (GROUP_CONCAT(?genre_name;SEPARATOR=", ") AS ?genres) ?image WHERE {{
           BIND({} AS ?query)
           ?id a ex:AnimeID ;
             exv:title ?title ;
-            exv:genres ?genre .
+            exv:genres ?genre ;
+            exv:score ?sc .
 
           OPTIONAL {{
             ?id exv:main_picture ?image .
@@ -30,8 +31,8 @@ def search(query: str):
 
           ?title bds:search ?query .
           ?genre rdfs:label ?genre_name .
-        }} GROUP BY ?id ?title ?image
-    """.format(json.dumps(query)))
+        }} GROUP BY ?id ?title ?image ORDER BY DESC(?score) LIMIT 32 OFFSET {}
+    """.format(json.dumps(query), json.dumps(page)))
     
     return sparql.queryAndConvert()["results"]["bindings"]
 
@@ -46,11 +47,12 @@ def get_suggestions(query: str):
         prefix exv:   <http://example.org/vocab#>
         prefix bds: <http://www.bigdata.com/rdf/search#>
 
-        SELECT ?id ?title (GROUP_CONCAT(?genre_name;SEPARATOR=", ") AS ?genres) ?image WHERE {{
+        SELECT ?id ?title (SAMPLE(?sc) AS ?score) (GROUP_CONCAT(?genre_name;SEPARATOR=", ") AS ?genres) ?image WHERE {{
           BIND({} AS ?query)
           ?id a ex:AnimeID ;
             exv:title ?title ;
-            exv:genres ?genre .
+            exv:genres ?genre ;
+          	exv:score ?sc .
 
           OPTIONAL {{
             ?id exv:main_picture ?image .
@@ -58,7 +60,7 @@ def get_suggestions(query: str):
 
           ?title bds:search ?query .
           ?genre rdfs:label ?genre_name .
-        }} GROUP BY ?id ?title ?image LIMIT 4
+        }} GROUP BY ?id ?title ?image ORDER BY DESC(?score) LIMIT 16
     """.format(json.dumps(query)))
 
     return sparql.queryAndConvert()["results"]["bindings"]

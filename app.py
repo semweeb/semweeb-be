@@ -13,11 +13,12 @@ CORS(app) # This will enable CORS for all routes
 def search():
     args = request.args
     query = args.get("q")
+    page = args.get("page")
 
     if not query:
         return "Search query not specified.", status.HTTP_400_BAD_REQUEST
     try:
-        return sparql.search(query)
+        return sparql.search(query, int(page) * 32)
     except:
         return "An error occurred while fetching your search results.", status.HTTP_500_BAD_REQUEST
 
