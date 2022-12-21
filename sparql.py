@@ -18,20 +18,27 @@ def search(query: str, page: int):
         prefix exv:   <http://example.org/vocab#>
         prefix bds: <http://www.bigdata.com/rdf/search#>
 
-        SELECT ?id ?title (SAMPLE(?sc) AS ?score) (GROUP_CONCAT(?genre_name;SEPARATOR=", ") AS ?genres) ?image WHERE {{
-          BIND({} AS ?query)
-          ?id a ex:AnimeID ;
-            exv:title ?title ;
-            exv:genres ?genre ;
-            exv:score ?sc .
-
-          OPTIONAL {{
-            ?id exv:main_picture ?image .
+        SELECT DISTINCT ?id (SAMPLE(?t) AS ?title) (GROUP_CONCAT(?genre_name; SEPARATOR=", ") as ?genres) (SAMPLE(?sc) AS ?score) (SAMPLE(?im) AS ?image) WHERE {{
+          BIND({0} AS ?query)
+          {{
+            ?id a ex:AnimeID ;
+                  exv:title ?t ;
+                  exv:title_english ?title_en ; 
+                  exv:genres ?g ;
+                  exv:score ?sc .
+            OPTIONAL {{
+              ?id exv:main_picture ?im .
+            }}  
+            ?g rdfs:label ?genre_name .
           }}
-
-          ?title bds:search ?query .
-          ?genre rdfs:label ?genre_name .
-        }} GROUP BY ?id ?title ?image ORDER BY DESC(?score) LIMIT 32 OFFSET {}
+          {{
+            ?t bds:search ?query .
+          }}
+          UNION
+          {{
+            ?title_en bds:search ?query .
+          }}
+        }} GROUP BY ?id ORDER BY DESC(?score) LIMIT 32 OFFSET {1}
     """.format(json.dumps(query), json.dumps(page)))
     
     return sparql.queryAndConvert()["results"]["bindings"]
@@ -47,20 +54,27 @@ def get_suggestions(query: str):
         prefix exv:   <http://example.org/vocab#>
         prefix bds: <http://www.bigdata.com/rdf/search#>
 
-        SELECT ?id ?title (SAMPLE(?sc) AS ?score) (GROUP_CONCAT(?genre_name;SEPARATOR=", ") AS ?genres) ?image WHERE {{
-          BIND({} AS ?query)
-          ?id a ex:AnimeID ;
-            exv:title ?title ;
-            exv:genres ?genre ;
-          	exv:score ?sc .
-
-          OPTIONAL {{
-            ?id exv:main_picture ?image .
+        SELECT DISTINCT ?id (SAMPLE(?t) AS ?title) (GROUP_CONCAT(?genre_name; SEPARATOR=", ") as ?genres) (SAMPLE(?sc) AS ?score) (SAMPLE(?im) AS ?image) WHERE {{
+          BIND({0} AS ?query)
+          {{
+            ?id a ex:AnimeID ;
+                  exv:title ?t ;
+                  exv:title_english ?title_en ; 
+                  exv:genres ?g ;
+                  exv:score ?sc .
+            OPTIONAL {{
+              ?id exv:main_picture ?im .
+            }}  
+            ?g rdfs:label ?genre_name .
           }}
-
-          ?title bds:search ?query .
-          ?genre rdfs:label ?genre_name .
-        }} GROUP BY ?id ?title ?image ORDER BY DESC(?score) LIMIT 16
+          {{
+            ?t bds:search ?query .
+          }}
+          UNION
+          {{
+            ?title_en bds:search ?query .
+          }}
+        }} GROUP BY ?id ORDER BY DESC(?score) LIMIT 16
     """.format(json.dumps(query)))
 
     return sparql.queryAndConvert()["results"]["bindings"]
@@ -202,4 +216,5 @@ def get_anime_details(anime_id: str):
         }} GROUP BY ?title ?scored_by ?members ?favorites ?status_name ?sfw ?approved ?type_name ?score ?episodes ?start_date ?end_date ?source_name ?synopsis ?background ?main_picture ?episode_duration ?total_duration ?rating_name ?start_year ?start_season ?broadcast_day ?broadcast_time ?trailer_url ?title_english ?title_japanese
     """)
 
-    return sparql.queryAndConvert()["results"]["bindings"]
+    return sparql.queryAndConvert()["results"]["bindings"][0]
+
