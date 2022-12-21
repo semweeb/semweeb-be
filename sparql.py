@@ -9,72 +9,84 @@ sparql.setReturnFormat(JSON)
 
 def search(query: str, page: int):
     sparql.setQuery("""
-        prefix xsd: <http://www.w3.org/2001/XMLSchema#>
-        prefix skos: <http://www.w3.org/2004/02/skos/core#>
-        prefix owl: <http://www.w3.org/2002/07/owl#>
-        prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-        prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-        prefix ex:    <http://example.org/data/>
-        prefix exv:   <http://example.org/vocab#>
-        prefix bds: <http://www.bigdata.com/rdf/search#>
+      prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+      prefix skos: <http://www.w3.org/2004/02/skos/core#>
+      prefix owl: <http://www.w3.org/2002/07/owl#>
+      prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+      prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+      prefix ex:    <http://example.org/data/>
+      prefix exv:   <http://example.org/vocab#>
+      prefix bds: <http://www.bigdata.com/rdf/search#>
 
-        SELECT DISTINCT ?id (SAMPLE(?t) AS ?title) (GROUP_CONCAT(?genre_name; SEPARATOR=", ") as ?genres) (SAMPLE(?sc) AS ?score) (SAMPLE(?im) AS ?image) WHERE {{
-          BIND({0} AS ?query)
-          {{
-            ?id a ex:AnimeID ;
-                  exv:title ?t ;
-                  exv:title_english ?title_en ; 
-                  exv:genres ?g ;
-                  exv:score ?sc .
-            OPTIONAL {{
-              ?id exv:main_picture ?im .
-            }}  
-            ?g rdfs:label ?genre_name .
+      SELECT DISTINCT ?id (SAMPLE(?t) AS ?title) (GROUP_CONCAT(?genre_name; SEPARATOR=", ") as ?genres) (SAMPLE(?sc) AS ?score) (SAMPLE(?im) AS ?image) WHERE {{
+        BIND({0} AS ?query)
+        {{
+          ?id a ex:AnimeID ;
+                exv:title ?t ;
+                exv:genres ?g ;
+                exv:score ?sc .
+          OPTIONAL {{
+            ?id exv:main_picture ?im .
+          }}  
+          OPTIONAL {{
+            ?id exv:title_english ?title_en ;
           }}
-          {{
-            ?t bds:search ?query .
+          ?g rdfs:label ?genre_name .
+        }}
+        {{
+          ?t bds:search ?query .
+        }}
+        UNION
+        {{
+          OPTIONAL {{ 
+            FILTER (strlen(?title_en) > 0)
+            BIND(".#." AS ?title_en)
           }}
-          UNION
-          {{
-            ?title_en bds:search ?query .
-          }}
-        }} GROUP BY ?id ORDER BY DESC(?score) LIMIT 32 OFFSET {1}
+          ?title_en bds:search ?query .
+        }}
+      }} GROUP BY ?id ORDER BY DESC(?score) LIMIT 32 OFFSET {1}
     """.format(json.dumps(query), json.dumps(page)))
     
     return sparql.queryAndConvert()["results"]["bindings"]
 
 def get_suggestions(query: str):
     sparql.setQuery("""
-        prefix xsd: <http://www.w3.org/2001/XMLSchema#>
-        prefix skos: <http://www.w3.org/2004/02/skos/core#>
-        prefix owl: <http://www.w3.org/2002/07/owl#>
-        prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-        prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-        prefix ex:    <http://example.org/data/>
-        prefix exv:   <http://example.org/vocab#>
-        prefix bds: <http://www.bigdata.com/rdf/search#>
+      prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+      prefix skos: <http://www.w3.org/2004/02/skos/core#>
+      prefix owl: <http://www.w3.org/2002/07/owl#>
+      prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+      prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+      prefix ex:    <http://example.org/data/>
+      prefix exv:   <http://example.org/vocab#>
+      prefix bds: <http://www.bigdata.com/rdf/search#>
 
-        SELECT DISTINCT ?id (SAMPLE(?t) AS ?title) (GROUP_CONCAT(?genre_name; SEPARATOR=", ") as ?genres) (SAMPLE(?sc) AS ?score) (SAMPLE(?im) AS ?image) WHERE {{
-          BIND({0} AS ?query)
-          {{
-            ?id a ex:AnimeID ;
-                  exv:title ?t ;
-                  exv:title_english ?title_en ; 
-                  exv:genres ?g ;
-                  exv:score ?sc .
-            OPTIONAL {{
-              ?id exv:main_picture ?im .
-            }}  
-            ?g rdfs:label ?genre_name .
+      SELECT DISTINCT ?id (SAMPLE(?t) AS ?title) (GROUP_CONCAT(?genre_name; SEPARATOR=", ") as ?genres) (SAMPLE(?sc) AS ?score) (SAMPLE(?im) AS ?image) WHERE {{
+        BIND({0} AS ?query)
+        {{
+          ?id a ex:AnimeID ;
+                exv:title ?t ;
+                exv:genres ?g ;
+                exv:score ?sc .
+          OPTIONAL {{
+            ?id exv:main_picture ?im .
+          }}  
+          OPTIONAL {{
+            ?id exv:title_english ?title_en ;
           }}
-          {{
-            ?t bds:search ?query .
+          ?g rdfs:label ?genre_name .
+        }}
+        {{
+          ?t bds:search ?query .
+        }}
+        UNION
+        {{
+          OPTIONAL {{ 
+            FILTER (strlen(?title_en) > 0)
+            BIND(".#." AS ?title_en)
           }}
-          UNION
-          {{
-            ?title_en bds:search ?query .
-          }}
-        }} GROUP BY ?id ORDER BY DESC(?score) LIMIT 16
+          ?title_en bds:search ?query .
+        }}
+      }} GROUP BY ?id ORDER BY DESC(?score) LIMIT 16
     """.format(json.dumps(query)))
 
     return sparql.queryAndConvert()["results"]["bindings"]
