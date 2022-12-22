@@ -7,7 +7,16 @@ sparql = SPARQLWrapper(
 
 sparql.setReturnFormat(JSON)
 
-def search(query: str, page: int):
+def search(query: str, page: int, genre: list):
+    if len(genre) > 0:
+      filter = f"HAVING(regex(?genres, \"{genre[0].capitalize()}\")"
+      for i in range(1, len(genre)):
+        filter += f" || regex(?genres, \"{genre[i].capitalize()}\")"
+      filter += ")"
+    else:
+      filter = ""
+
+    print(filter)
     sparql.setQuery("""
       prefix xsd: <http://www.w3.org/2001/XMLSchema#>
       prefix skos: <http://www.w3.org/2004/02/skos/core#>
@@ -44,8 +53,10 @@ def search(query: str, page: int):
           }}
           ?title_en bds:search ?query .
         }}
-      }} GROUP BY ?id ORDER BY DESC(?score) LIMIT 32 OFFSET {1}
-    """.format(json.dumps(query), json.dumps(page)))
+      }} GROUP BY ?id 
+      {1}
+      ORDER BY DESC(?score) LIMIT 32 OFFSET {2}
+    """.format(json.dumps(query), filter, json.dumps(page)))
     
     return sparql.queryAndConvert()["results"]["bindings"]
 
@@ -92,7 +103,6 @@ def get_suggestions(query: str):
     return sparql.queryAndConvert()["results"]["bindings"]
 
 def get_anime_details(anime_id: str):
-    print(anime_id)
     sparql.setQuery(f"""
         prefix xsd: <http://www.w3.org/2001/XMLSchema#>
         prefix skos: <http://www.w3.org/2004/02/skos/core#>
@@ -230,3 +240,38 @@ def get_anime_details(anime_id: str):
 
     return sparql.queryAndConvert()["results"]["bindings"][0]
 
+def get_anime_voice_actor(anime_id: str):
+    sparql.setQuery(f"""
+    PREFIX wd: <http://www.wikidata.org/entity/>
+    PREFIX wds: <http://www.wikidata.org/entity/statement/>
+    PREFIX wdv: <http://www.wikidata.org/value/>
+    PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+    PREFIX wikibase: <http://wikiba.se/ontology#>
+    PREFIX p: <http://www.wikidata.org/prop/>
+    PREFIX ps: <http://www.wikidata.org/prop/statement/>
+    PREFIX pq: <http://www.wikidata.org/prop/qualifier/>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    PREFIX bd: <http://www.bigdata.com/rdf#>
+
+    SELECT DISTINCT ?item ?itemLabel ?characters ?charactersLabel ?actor ?actorLabel WHERE {{
+      SERVICE <https://query.wikidata.org/sparql> {{
+        SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
+        {{
+          SELECT DISTINCT ?actor ?actorLabel ?characters ?charactersLabel WHERE {{
+            ?item p:P4086 ?statement0.
+                ?statement0 ps:P4086 "{anime_id}".
+                OPTIONAL {{
+                  ?item p:P725 ?statement1.
+                  ?statement1 ps:P725 ?actor.
+                  ?statement1 pq:P453 ?characters.
+                }}
+          }} LIMIT 20
+        }}
+      }}
+    }}               
+    """)
+
+    return sparql.queryAndConvert()["results"]["bindings"]
+
+def get_random_anime_details():
+  print("")
